@@ -1,0 +1,26 @@
+{
+  "title": "",
+  "author": "",
+  "episode_label": "話",
+  "notice": "これは公開前の草稿です。転載・再配布はご遠慮ください。",
+  "cover_image": "publish/note/assets/cover-base.png",
+  "viewer": {
+    "slug": "",
+    "url": "",
+    "label": "",
+    "storage_key": "",
+    "accent": ""
+  },
+  "note": {
+    "account_url": "",
+    "magazine_url": "",
+    "intro_url": "",
+    "hashtags": [
+      "#小説",
+      "#連載小説",
+      "#創作"
+    ],
+    "publish_schedule": "",
+    "start_after_all_chapters": true
+  }
+}

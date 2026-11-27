@@ -1,0 +1,304 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>{{VIEWER_TITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap">
+<style>
+/* Layout: a quiet manuscript desk. One sticky control strip; the page itself is either a horizontal column of ~38 zenkaku, or a vertical-rl band that scrolls right-to-left. Line numbers are the source file's own lines. */
+:root {
+  --paper: #f4f5f2;
+  --sheet: #fbfbf9;
+  --ink: #23272a;
+  --ink-soft: #5d6468;
+  --rule: #d9ddd8;
+  --accent: {{ACCENT}};      /* the one accent color: novel.config.json viewer.accent */
+  --accent-wash: {{ACCENT_WASH}};
+  --font-body: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "YuGothic", system-ui, sans-serif;
+  --fs: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15181a; --sheet: #1b1f22; --ink: #dcdad3; --ink-soft: #99a0a3;
+    --rule: #2e3437; --accent: {{ACCENT_DARK}}; --accent-wash: {{ACCENT_WASH_DARK}}; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15181a; --sheet: #1b1f22; --ink: #dcdad3; --ink-soft: #99a0a3;
+  --rule: #2e3437; --accent: {{ACCENT_DARK}}; --accent-wash: {{ACCENT_WASH_DARK}}; color-scheme: dark;
+}
+html { height: 100%; }
+body { min-height: 100%; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-ui);
+  display: flex; flex-direction: column;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sheet); }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--sheet); border-bottom: 1px solid var(--rule);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.bar-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.book { font-size: 12px; letter-spacing: .12em; color: var(--ink-soft); margin-right: auto; white-space: nowrap; }
+.book b { color: var(--accent); font-weight: 500; letter-spacing: .04em; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+select, button {
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer;
+}
+select { max-width: 62vw; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: transparent; padding: 6px 12px; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--sheet); }
+.toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.size { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--ink-soft); }
+.size button { padding: 4px 9px; }
+.jump { display: inline-flex; gap: 4px; align-items: center; margin: 0; }
+.jump input {
+  font: inherit; font-size: 13px; color: var(--ink); width: 4.6em;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 6px 8px; font-variant-numeric: tabular-nums;
+}
+.jump input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; left: -9999px; }
+.meta .tofocus { font-size: 12px; padding: 1px 8px; margin-left: 6px; border-color: var(--accent); color: var(--accent); background: transparent; }
+.ms p.changed { background: var(--accent-wash); }
+.ms p.changed .n { color: var(--accent); font-weight: 500; }
+@keyframes flash { 0%, 45% { box-shadow: 0 0 0 2px var(--accent); } 100% { box-shadow: 0 0 0 2px transparent; } }
+.ms p.flash { animation: flash 2.6s ease-out; }
+
+main {
+  flex: 1; min-height: 0;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.head { max-width: 40em; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.head h1 { font-family: var(--font-body); font-weight: 700; font-size: 1.6rem; margin: 0; text-wrap: balance; letter-spacing: .06em; }
+.state { font-size: 11px; letter-spacing: .1em; padding: 2px 8px; border-radius: 99px; background: var(--accent-wash); color: var(--accent); }
+.state.old { background: transparent; border: 1px solid var(--rule); color: var(--ink-soft); }
+.meta { max-width: 40em; margin: 0 auto 20px; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* manuscript */
+.ms { font-family: var(--font-body); font-size: var(--fs); line-height: 1.95; color: var(--ink); }
+.ms p { margin: 0; position: relative; }
+.ms .brk { color: var(--accent); text-align: center; letter-spacing: 1em; }
+.ms em { font-style: italic; color: var(--accent); }
+.ms .n {
+  font-family: var(--font-ui); font-size: 10px; color: var(--ink-soft);
+  font-variant-numeric: tabular-nums; user-select: none; position: absolute;
+  writing-mode: horizontal-tb; letter-spacing: 0; line-height: 1;
+}
+.nums-off .ms .n { display: none; }
+
+/* horizontal */
+.h .ms { max-width: 38em; margin: 0 auto; padding-left: 3.2em; }
+.h .ms p { padding-block: .12em; }
+.h .ms .n { left: -4.4em; width: 3.4em; text-align: right; top: .95em; transform: translateY(-50%); }
+.nums-off.h .ms { padding-left: 0; }
+
+/* vertical */
+.v .scroller {
+  height: calc(100dvh - 210px); min-height: 360px;
+  overflow-x: auto; overflow-y: hidden;
+  border-block: 1px solid var(--rule);
+  background: var(--sheet);
+}
+.v .ms {
+  writing-mode: vertical-rl; height: 100%;
+  padding: 2.4em 1.6em 1.6em; box-sizing: border-box;
+  text-orientation: mixed;
+}
+.v .ms p { padding-inline: .1em; }
+.v .ms .tcy { text-combine-upright: all; }
+.v .ms .n { top: -1.9em; left: 50%; transform: translateX(-50%); }
+.nums-off.v .ms { padding-top: 1.6em; }
+.v .hint { display: block; }
+.hint { display: none; text-align: center; font-size: 11px; color: var(--ink-soft); margin-top: 8px; }
+
+.nav { max-width: 40em; margin: 28px auto 0; display: flex; justify-content: space-between; gap: 12px; }
+.nav button { min-width: 0; }
+@media (prefers-reduced-motion: no-preference) { .seg button, .toggle { transition: background .15s, color .15s; } }
+@media (max-width: 520px) {
+  :root { --fs: 16px; }
+  .h .ms { padding-left: 2.6em; }
+  .h .ms .n { left: -3.6em; width: 3em; }
+  .v .scroller { height: calc(100dvh - 250px); }
+}
+</style>
+
+<header class="bar">
+  <div class="bar-inner">
+    <div class="book"><b>{{BOOK_TITLE}}</b>　原稿閲覧</div>
+    <div class="controls">
+      <label for="chap" class="size" style="position:absolute;left:-9999px">章</label>
+      <select id="chap" aria-label="章を選ぶ"></select>
+      <div class="seg" role="group" aria-label="組み方">
+        <button id="mode-v" type="button" aria-pressed="false">縦書き</button>
+        <button id="mode-h" type="button" aria-pressed="true">横書き</button>
+      </div>
+      <button id="nums" class="toggle" type="button" aria-pressed="true">行番号</button>
+      <form id="jump" class="jump" autocomplete="off">
+        <label for="goline" class="sr">移動する行番号</label>
+        <input id="goline" type="text" inputmode="numeric" placeholder="行" aria-label="移動する行番号">
+        <button type="submit">移動</button>
+      </form>
+      <span class="size" aria-label="文字の大きさ">
+        <button id="smaller" type="button" aria-label="文字を小さく">小</button>
+        <button id="larger" type="button" aria-label="文字を大きく">大</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main id="view" class="h">
+  <div class="head"><h1 id="ttl"></h1><span id="state" class="state"></span></div>
+  <div class="meta" id="meta"></div>
+  <div class="scroller" id="scroller"><div class="ms" id="ms"></div></div>
+  <div class="hint">右から左へスクロールして読みます</div>
+  <nav class="nav">
+    <button id="prev" type="button"></button>
+    <button id="next" type="button"></button>
+  </nav>
+</main>
+
+<script>
+const CH = /*CHAPTERS*/[];
+const FOCUS = /*FOCUS*/null;
+const CONF = /*CONF*/{};
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(CONF.storageKey + ':' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(CONF.storageKey + ':' + k, JSON.stringify(v)); } catch (e) {} }
+};
+let state = { mode: store.get('mode', 'h'), nums: store.get('nums', true), fs: store.get('fs', 0) };
+const latest = CH.map(c => c.n).sort((a, b) => b - a)[0];
+let cur = latest;
+
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function fmt(s) {
+  let t = esc(s.replace(/^\s+/, (m) => m.replace(/ /g, '　')));
+  t = t.replace(/`([^`]+)`/g, '$1').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  t = t.replace(/(^|[^0-9A-Za-z])(\d{1,2})(?![0-9])/g, (m, a, d) => a + '<span class="tcy">' + d + '</span>');
+  return t;
+}
+// 字数は tools/count_chars.py と同じ数え方（ファイル全体から半角スペース・タブ・改行を除く）で、build_viewer.py が計算して渡す
+function countChars(c) { return c.chars; }
+
+function render() {
+  const c = CH.find(x => x.n === cur);
+  $('ttl').textContent = c.title;
+  const st = $('state');
+  st.textContent = CONF.label || '';
+  st.hidden = !CONF.label;
+  const fl = (FOCUS && FOCUS.n === c.n) ? FOCUS.lines : [];
+  $('meta').innerHTML = esc(`chapters/${String(c.n).padStart(2, '0')}_*.md ・ ${countChars(c).toLocaleString('ja-JP')} 字 ・ 行番号はファイルの行`)
+    + (fl.length ? `<button type="button" class="tofocus" id="tofocus">直近の修正：${fl.join('・')} 行</button>` : '');
+  if (fl.length) $('tofocus').addEventListener('click', () => toLine(fl[0], true));
+  $('ms').innerHTML = c.lines.map(([n, l]) => {
+    const num = `<span class="n">${n}</span>`;
+    if (l.trim() === '---') return `<p class="brk" data-n="${n}">${num}◇　◇　◇</p>`;
+    return `<p id="L${n}" data-n="${n}"${fl.includes(n) ? ' class="changed"' : ''}>${num}${fmt(l)}</p>`;
+  }).join('');
+  const i = CH.indexOf(c);
+  const pv = CH[i - 1], nx = CH[i + 1];
+  $('prev').hidden = !pv; $('next').hidden = !nx;
+  if (pv) $('prev').textContent = '← ' + pv.title;
+  if (nx) $('next').textContent = nx.title + ' →';
+  $('chap').value = String(cur);
+  const sc = $('scroller'); sc.scrollLeft = state.mode === 'v' ? sc.scrollWidth : 0;
+}
+function applyView() {
+  const v = $('view');
+  v.className = state.mode + (state.nums ? '' : ' nums-off');
+  $('mode-v').setAttribute('aria-pressed', state.mode === 'v');
+  $('mode-h').setAttribute('aria-pressed', state.mode === 'h');
+  $('nums').setAttribute('aria-pressed', state.nums);
+  const base = window.matchMedia('(max-width: 520px)').matches ? 16 : 18;
+  document.documentElement.style.setProperty('--fs', (base + state.fs * 2) + 'px');
+  const sc = $('scroller'); sc.scrollLeft = state.mode === 'v' ? sc.scrollWidth : 0;
+}
+function go(n) { cur = n; location.hash = 'ch' + n; render(); window.scrollTo(0, 0); }
+
+$('chap').innerHTML = CH.map(c => `<option value="${c.n}">${esc(c.title)}</option>`).join('');
+$('chap').addEventListener('change', e => go(+e.target.value));
+function keep(f) { const ln = visibleLine(); f(); applyView(); if (ln) settle(() => toLine(ln, false)); }
+$('mode-v').addEventListener('click', () => keep(() => { state.mode = 'v'; store.set('mode', 'v'); }));
+$('mode-h').addEventListener('click', () => keep(() => { state.mode = 'h'; store.set('mode', 'h'); }));
+$('nums').addEventListener('click', () => { state.nums = !state.nums; store.set('nums', state.nums); applyView(); });
+$('smaller').addEventListener('click', () => keep(() => { state.fs = Math.max(-2, state.fs - 1); store.set('fs', state.fs); }));
+$('larger').addEventListener('click', () => keep(() => { state.fs = Math.min(4, state.fs + 1); store.set('fs', state.fs); }));
+$('prev').addEventListener('click', () => { const i = CH.findIndex(c => c.n === cur); go(CH[i - 1].n); });
+$('next').addEventListener('click', () => { const i = CH.findIndex(c => c.n === cur); go(CH[i + 1].n); });
+$('scroller').addEventListener('wheel', e => {
+  if (state.mode !== 'v' || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault(); $('scroller').scrollLeft -= e.deltaY;
+}, { passive: false });
+function toLine(n, flash) {
+  const ps = [...$('ms').querySelectorAll('p[data-n]')];
+  if (!ps.length) return;
+  const p = ps.find(e => +e.dataset.n >= n) || ps[ps.length - 1];
+  p.scrollIntoView({ block: 'center', inline: 'center' });
+  if (flash) { p.classList.remove('flash'); void p.offsetWidth; p.classList.add('flash'); }
+}
+function visibleLine() {
+  const ps = $('ms').querySelectorAll('p[data-n]');
+  if (state.mode === 'v') {
+    const r = $('scroller').getBoundingClientRect(), cx = (r.left + r.right) / 2;
+    for (const p of ps) if (p.getBoundingClientRect().left < cx) return +p.dataset.n;
+  } else {
+    const cy = window.innerHeight / 2;
+    for (const p of ps) if (p.getBoundingClientRect().bottom > cy) return +p.dataset.n;
+  }
+  return null;
+}
+function settle(f) {
+  let done = false;
+  requestAnimationFrame(() => requestAnimationFrame(() => { f(); }));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(() => { if (!done) { done = true; f(); } }, 60));
+}
+let saveTimer = 0;
+function savePos() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { const ln = visibleLine(); if (ln) store.set('pos', { n: cur, line: ln }); }, 250);
+}
+window.addEventListener('scroll', savePos, { passive: true });
+$('scroller').addEventListener('scroll', savePos, { passive: true });
+$('jump').addEventListener('submit', e => {
+  e.preventDefault();
+  const n = parseInt($('goline').value.replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)), 10);
+  if (n > 0) { toLine(n, true); savePos(); }
+});
+function parseHash() {
+  const m = /^#ch(\d+)(?:-L(\d+))?$/.exec(location.hash);
+  return (m && CH.some(c => c.n === +m[1])) ? { n: +m[1], line: m[2] ? +m[2] : null } : null;
+}
+function start() {
+  const h = parseHash(), pos = store.get('pos', null);
+  if (FOCUS && store.get('focusSeen', null) !== FOCUS.id && CH.some(c => c.n === FOCUS.n)) {
+    store.set('focusSeen', FOCUS.id); cur = FOCUS.n; return { line: FOCUS.lines[0], flash: true };
+  }
+  if (h) { cur = h.n; if (h.line) return { line: h.line, flash: true }; return (pos && pos.n === cur) ? { line: pos.line } : null; }
+  if (pos && CH.some(c => c.n === pos.n)) { cur = pos.n; return { line: pos.line }; }
+  return null;
+}
+window.addEventListener('hashchange', () => {
+  const h = parseHash(); if (!h) return;
+  if (h.n !== cur) { cur = h.n; render(); }
+  if (h.line) settle(() => toLine(h.line, false));
+});
+try { history.scrollRestoration = 'manual'; } catch (e) {}
+const first = start(); render(); applyView();
+if (first) { let once = !!first.flash; settle(() => { toLine(first.line, once); once = false; }); }
+</script>
+
+</body></html>
